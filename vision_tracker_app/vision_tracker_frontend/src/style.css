@@ -1,0 +1,52 @@
+/* vision_tracker_frontend/src/style.css */
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- Global Layout Styles --- */
+/*
+ * Ensures the html and body elements take up the full viewport
+ * and removes default browser margins/padding.
+ * This is crucial for full-page layouts and consistent sizing.
+ */
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Smooth scrolling for anchor links.
+ * Improves user experience when navigating within the page (e.g., "scroll to top").
+ */
+html {
+  scroll-behavior: smooth;
+}
+
+/*
+ * Sets a global background color for the entire application.
+ * Corresponds to Tailwind's bg-amber-50 utility class.
+ * Ideally, this would be applied directly to the <body> tag via Tailwind classes in HTML,
+ * but can be set here as a global fallback or for specific integration needs.
+ */
+body {
+  background-color: #FFFBEB; /* Tailwind's bg-amber-50 */
+}
+
+/* --- Application Root Styles --- */
+/*
+ * Styles for the main application container (e.g., Vue/React root element).
+ * Ensures it fills the available space and centers its content vertically and horizontally.
+ */
+#app {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Stacks children vertically */
+  align-items: center; /* Centers children horizontally */
+  justify-content: center; /* Centers children vertically */
+}
