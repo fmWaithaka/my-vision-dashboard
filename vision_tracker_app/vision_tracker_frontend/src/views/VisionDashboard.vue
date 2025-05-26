@@ -9,7 +9,7 @@
 
       <section id="fullVision" class="mb-10 p-6 bg-amber-100 rounded-lg shadow">
         <h2 class="text-xl md:text-2xl font-semibold text-teal-600 mb-4 text-center">My Guiding Statement</h2>
-        <p class="text-lg md:text-xl leading-relaxed text-stone-700 text-center">
+        <p class="text-lg md::text-xl leading-relaxed text-stone-700 text-center">
           "I am a <span class="vision-phrase font-semibold text-teal-700" data-target="leadershipGrowth">good leader</span>,
           <span class="vision-phrase font-semibold text-teal-700" data-target="leadershipGrowth">continuously refreshing my skills</span> and
           <span class="vision-phrase font-semibold text-teal-700" data-target="leadershipGrowth">expanding my network with inspiring individuals</span>.
@@ -46,7 +46,7 @@
           </ul>
         </section>
 
-        <section id="foundationalPrinciples" class="p-6 rounded-lg shadow-md bg-stone-.50 content-section">
+        <section id="foundationalPrinciples" class="p-6 rounded-lg shadow-md bg-stone-50 content-section">
           <h3 class="text-xl font-semibold text-teal-600 mb-3 flex items-center"><span class="text-2xl mr-2">🧭</span>Foundational Principles</h3>
           <p class="text-stone-700 leading-relaxed text-sm md:text-base">My vision is anchored by core principles that guide my actions and decisions. Spiritual and emotional maturity provide the bedrock for wisdom and sound judgment. Fostering dignity in all interactions is paramount, ensuring respect for myself and others. Effective communication, characterized by articulate grace, allows me to convey ideas clearly and build strong relationships. This includes:</p>
           <ul class="list-disc list-inside mt-2 text-stone-600 space-y-1 text-sm md:text-base">
@@ -58,8 +58,8 @@
         </section>
 
         <section id="rolesActions" class="p-6 rounded-lg shadow-md bg-stone-50 content-section">
-          <h3 class="text-xl font-semibold text-teal-600 mb-3 flex items-center"><span class="text-2xl mr-2">🤝</span>Key Roles & Actions</h3>
-          <p class="text-stone-700 leading-relaxed text-sm md:text-base">This part of my vision defines how I manifest my principles and growth in tangible ways. Being a devoted husband and father is a central role, focused on nurturing and supporting my family. Professionally and personally, I aim to be a creative problem-solver, finding innovative solutions to challenges. I am passionate about championing accessible innovation, striving to make solutions available to those who need them most. My actions are driven by:</p>
+          <h3 class="text-xl font-semibold text-teal-600 mb-3 flex items-center"><span class="2xl mr-2">🤝</span>Key Roles & Actions</h3>
+          <p class="text-stone-700 leading-relaxed text-sm md:text-base">This part of my vision defines how I manifest my principles and growth in tangible ways. Being a devoted husband and father is a central role, focused on nurturing and supporting my family. Professionally and personally, I aim to be a creative problem-solver, finding innovative solutions to challenges. I am passionate about championing accessible innovation, striving to make solutions available to those who need them most. I am passionate about championing accessible innovation, striving to make solutions available to those who need them most. My actions are driven by:</p>
           <ul class="list-disc list-inside mt-2 text-stone-600 space-y-1 text-sm md:text-base">
             <li>Prioritizing family and fulfilling my roles as a husband and father.</li>
             <li>Approaching problems with creativity and a solution-oriented mindset.</li>
@@ -80,6 +80,31 @@
         </section>
       </div>
 
+      <MemoryInput class="mt-10" />
+
+      <div class="mt-8 mb-6 p-4 bg-teal-50 rounded-lg shadow-inner">
+        <h3 class="text-lg font-semibold text-teal-700 mb-4">Update Focus Values (API Test)</h3>
+        <div v-for="category in visionData" :key="category.id" class="flex items-center justify-between mb-3 last:mb-0">
+          <label :for="'focus-input-' + category.id" class="block text-sm font-medium text-stone-700 w-1/2 md:w-auto">{{ category.name }}:</label>
+          <input
+            :id="'focus-input-' + category.id"
+            type="number"
+            v-model.number="category.focus_value"
+            @change="updateCategoryFocus(category)"
+            class="mt-1 block w-20 md:w-24 px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm text-center"
+            min="0"
+            max="100"
+          />
+          <span class="text-stone-600 ml-2">%</span>
+        </div>
+        <p class="text-center text-xs text-stone-500 mt-4">Changes save automatically on input change.</p>
+      </div>
+      <div class="chart-container bg-stone-50 p-4 rounded-lg shadow">
+        <canvas id="visionBalanceChart"></canvas>
+      </div>
+
+      <LLMChat class="mt-10" />
+
       <footer class="text-center mt-12 pt-6 border-t border-stone-300">
         <p class="text-sm text-stone-500">&copy; <span id="currentYear"></span> My Personal Vision Dashboard. Crafted with purpose.</p>
       </footer>
@@ -89,14 +114,157 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
-import Chart from 'chart.js/auto'; // Import Chart.js directly
+import { onMounted, ref } from 'vue';
+import Chart from 'chart.js/auto';
+import LLMChat from '@/components/LLMChat.vue';
+import MemoryInput from '@/components/MemoryInput.vue'; 
+
+// Reactive variable to hold the fetched vision data
+const visionData = ref([]);
+let visionChartInstance = null; // To store the Chart.js instance for updates
+
+const updateCategoryFocus = async (category) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/vision-data/${category.id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(category)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(errorData)}`);
+    }
+
+    console.log(`Category ${category.name} updated successfully! New value: ${category.focus_value}`);
+    updateChart();
+  } catch (error) {
+    console.error("Error updating vision data:", error);
+  }
+};
+
+const fetchVisionData = async () => {
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/vision-data/');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    visionData.value = data;
+    console.log("Fetched vision data:", visionData.value);
+    updateChart();
+  } catch (error) {
+    console.error("Error fetching vision data:", error);
+  }
+};
+
+const updateChart = () => {
+  const ctx = document.getElementById('visionBalanceChart')?.getContext('2d');
+  if (!ctx) {
+    console.error("Failed to get context for visionBalanceChart");
+    return;
+  }
+
+  if (visionChartInstance) {
+    visionChartInstance.destroy();
+  }
+
+  const labels = visionData.value.map(item => item.name);
+  const dataValues = visionData.value.map(item => item.focus_value);
+
+  visionChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Commitment Focus',
+        data: dataValues,
+        backgroundColor: [
+          'rgba(20, 184, 166, 0.6)',
+          'rgba(13, 148, 136, 0.6)',
+          'rgba(15, 118, 110, 0.6)',
+          'rgba(17, 94, 89, 0.6)'
+        ],
+        borderColor: [
+          'rgba(20, 184, 166, 1)',
+          'rgba(13, 148, 136, 1)',
+          'rgba(15, 118, 110, 1)',
+          'rgba(17, 94, 89, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          beginAtZero: true,
+          max: 120,
+          grid: {
+            color: 'rgba(120, 113, 108, 0.1)'
+          },
+          ticks: {
+            color: '#57534e'
+          }
+        },
+        y: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#57534e',
+            font: {
+              size: 10
+            },
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              if (label.length > 16) {
+                const words = label.split(' ');
+                let lines = [''];
+                let currentLine = 0;
+                words.forEach(word => {
+                  if ((lines[currentLine] + word).length > 16 && lines[currentLine] !== '') {
+                    currentLine++;
+                    lines[currentLine] = '';
+                  }
+                  lines[currentLine] += word + ' ';
+                });
+                return lines.map(line => line.trim());
+              }
+              return label;
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          titleFont: { size: 14 },
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: function(context) {
+              return ` Focus Area: ${context.dataset.data[context.dataIndex]}% Commitment`;
+            }
+          }
+        }
+      }
+    }
+  });
+};
+
 
 onMounted(() => {
-  // Current Year in footer
   document.getElementById('currentYear').textContent = new Date().getFullYear();
+  fetchVisionData();
 
-  // Vision Phrase Click Handling
   const phrases = document.querySelectorAll('.vision-phrase');
   const sections = {
     leadershipGrowth: document.getElementById('leadershipGrowth'),
@@ -113,126 +281,26 @@ onMounted(() => {
       const targetSection = sections[targetId];
 
       if (targetSection) {
-        // Remove highlight from previously highlighted section
         if (lastHighlightedSection && lastHighlightedSection !== targetSection) {
           lastHighlightedSection.classList.remove('section-highlight', 'bg-teal-50');
         }
-
-        // Scroll to the section
         targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        // Highlight the current section
         targetSection.classList.add('section-highlight', 'bg-teal-50');
         lastHighlightedSection = targetSection;
-
-        // Optionally, remove highlight after a delay
         setTimeout(() => {
           if (targetSection.classList.contains('section-highlight')) {
             targetSection.classList.remove('section-highlight', 'bg-teal-50');
           }
-        }, 3000); // Remove highlight after 3 seconds
+        }, 3000);
       }
     });
   });
 
-  // Chart.js: Vision Balance Chart
-  const ctx = document.getElementById('visionBalanceChart')?.getContext('2d');
-  if (ctx) {
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Leadership & Growth', 'Foundational Principles', 'Key Roles & Actions', 'Ultimate Impact'],
-        datasets: [{
-          label: 'Commitment Focus',
-          data: [100, 100, 100, 100],
-          backgroundColor: [
-            'rgba(20, 184, 166, 0.6)', // teal-500
-            'rgba(13, 148, 136, 0.6)', // teal-600
-            'rgba(15, 118, 110, 0.6)', // teal-700
-            'rgba(17, 94, 89, 0.6)'    // teal-800
-          ],
-          borderColor: [
-            'rgba(20, 184, 166, 1)',
-            'rgba(13, 148, 136, 1)',
-            'rgba(15, 118, 110, 1)',
-            'rgba(17, 94, 89, 1)'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            beginAtZero: true,
-            max: 120,
-            grid: {
-              color: 'rgba(120, 113, 108, 0.1)'
-            },
-            ticks: {
-              color: '#57534e'
-            }
-          },
-          y: {
-            grid: {
-              display: false
-            },
-            ticks: {
-              color: '#57534e',
-              font: {
-                size: 10
-              },
-              callback: function(value, index, values) {
-                const label = this.getLabelForValue(value);
-                if (label.length > 16) {
-                  const words = label.split(' ');
-                  let lines = [''];
-                  let currentLine = 0;
-                  words.forEach(word => {
-                    if ((lines[currentLine] + word).length > 16 && lines[currentLine] !== '') {
-                      currentLine++;
-                      lines[currentLine] = '';
-                    }
-                    lines[currentLine] += word + ' ';
-                  });
-                  return lines.map(line => line.trim());
-                }
-                return label;
-              }
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            titleFont: { size: 14 },
-            bodyFont: { size: 12 },
-            callbacks: {
-              label: function(context) {
-                return ` Focus Area: ${context.dataset.data[context.dataIndex]}% Commitment`;
-              }
-            }
-          }
-        }
-      }
-    });
-  } else {
-    console.error("Failed to get context for visionBalanceChart");
-  }
-
-  // Intersection Observer for fade-in effect
   const observerOptions = {
     root: null,
     rootMargin: '0px',
     threshold: 0.1
   };
-
   const observerCallback = (entries, observer) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -241,7 +309,6 @@ onMounted(() => {
       }
     });
   };
-
   const observer = new IntersectionObserver(observerCallback, observerOptions);
   const elementsToObserve = document.querySelectorAll('.content-section');
   elementsToObserve.forEach(el => observer.observe(el));
@@ -249,8 +316,7 @@ onMounted(() => {
 </script>
 
 <style>
-/* Global styles and utility classes should ideally be in src/style.css */
-/* Component specific styles can be scoped here. */
+/* Styles below remain the same as your previous working version */
 .vision-phrase {
   cursor: pointer;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -265,9 +331,6 @@ onMounted(() => {
   border-left: 4px solid #0d9488; /* Tailwind teal-600 */
   padding-left: 1rem;
   transition: border-color 0.3s ease;
-}
-html {
-  scroll-behavior: smooth; /* This is a global HTML style, consider if it's best in Vue component or global CSS */
 }
 .chart-container {
   position: relative;

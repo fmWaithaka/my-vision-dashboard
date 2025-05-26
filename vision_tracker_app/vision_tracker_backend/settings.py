@@ -10,26 +10,64 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
+# vision_tracker_app/vision_tracker_app/settings.py
 
+from pathlib import Path
+import os
+from dotenv import load_dotenv # NEW: Import load_dotenv
+import firebase_admin # Keep this here for firebase_admin._apps check later
+from firebase_admin import credentials, firestore # Keep this here
+
+# 1. Load environment variables FIRST
+load_dotenv() # This loads the variables from .env into os.environ
+
+# 2. Define BASE_DIR (Project Root)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-+^_quh$u@)my_l^tps42kcye!9+fm#h@85yj5oap2vdkt(*5#j"
+SECRET_KEY = "django-insecure-+^_quh$u@)my_l^tps42kcye!9+fm#h@85yj5oap2vdkt(*5#j" # This can stay
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# 3. Access environment variables after dotenv is loaded
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# Application definition
+# Custom Application Settings
+VISION_STATEMENT_FULL = (
+    "I am a good leader, continuously refreshing my skills and expanding my network with inspiring individuals. "
+    "Grounded in spiritual and emotional maturity, I make wise decisions, foster dignity, and communicate with articulate grace. "
+    "As a devoted husband and father, a creative problem-solver, and a champion for accessible innovation, "
+    "I leave a profound and positive mark on every life I touch and every challenge I undertake."
+)
 
+
+
+# 4. Firebase Initialization - NOW AFTER BASE_DIR IS DEFINED
+print(f"DEBUG: Checking Firebase initialization...") # Debug print
+if not firebase_admin._apps: # Checks if an app is already initialized
+    FIREBASE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'firebase_credentials.json')
+    print(f"DEBUG: Looking for Firebase credentials at: {FIREBASE_CREDENTIALS_PATH}") # Debug print
+    if os.path.exists(FIREBASE_CREDENTIALS_PATH):
+        try:
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+            firebase_admin.initialize_app(cred)
+            print("Firebase Admin SDK initialized successfully!") # SUCCESS print
+        except Exception as e:
+            print(f"ERROR: Error initializing Firebase Admin SDK: {e}") # ERROR print
+    else:
+        print("ERROR: Firebase credentials file not found. Firebase Admin SDK not initialized.") # FILE NOT FOUND print
+else:
+    print("DEBUG: Firebase Admin SDK already initialized.") # ALREADY INITIALIZED print
+
+
+# Application definition (rest of your settings, no changes needed here)
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -38,17 +76,19 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "vision_tracker_api", 
+    "vision_tracker_api",
+    "corsheaders", # Make sure corsheaders is here too!
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = "vision_tracker_backend.urls"
@@ -81,6 +121,10 @@ DATABASES = {
     }
 }
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173", 
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
