@@ -108,7 +108,10 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "vision_tracker_backend.wsgi.application"
+# WSGI_APPLICATION = "vision_tracker_backend.wsgi.application"
+
+# In vision_tracker_app/settings.py
+ASGI_APPLICATION = 'vision_tracker_backend.asgi.application'
 
 
 # Database

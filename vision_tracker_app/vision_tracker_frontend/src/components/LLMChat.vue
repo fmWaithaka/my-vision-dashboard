@@ -43,6 +43,7 @@ export default {
       isLoading: false,
       error: null,
       apiBaseUrl: 'http://127.0.0.1:8000/api/',
+      conversationId: null, // <-- NEW: To store the current conversation ID
     };
   },
   methods: {
@@ -58,14 +59,23 @@ export default {
       this.userMessage = '';
 
       try {
-        const response = await axios.post(`${this.apiBaseUrl}llm-chat/`, {
-          message: messageToSend, 
-        });
+        // Prepare the payload, conditionally including conversation_id
+        const payload = {
+          message: messageToSend,
+        };
+        if (this.conversationId) {
+          payload.conversation_id = this.conversationId;
+        }
 
-        // Note: Your backend now returns {'response': llm_response_content}
-        // So you should use response.data.response, not response.data.llm_response
+        const response = await axios.post(`${this.apiBaseUrl}llm-chat/`, payload); // <-- Changed: sending payload
+
         const aiResponse = response.data.response || "Sorry, I couldn't get a clear response.";
         this.messages.push({ sender: 'ai', text: aiResponse });
+
+        // <-- NEW: Store the conversation ID from the response
+        if (response.data.conversation_id) {
+          this.conversationId = response.data.conversation_id;
+        }
 
       } catch (err) {
         console.error('Error sending message to LLM:', err);
@@ -86,6 +96,9 @@ export default {
     },
   },
   mounted() {
+    // Optionally, you could try to load a saved conversationId from localStorage here
+    // If you want to persist conversations across browser sessions.
+    // e.g., this.conversationId = localStorage.getItem('lastConversationId');
     this.messages.push({ sender: 'ai', text: "Hello! How can I help you with your vision today?" });
   }
 };
